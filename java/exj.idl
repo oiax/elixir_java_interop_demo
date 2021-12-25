@@ -1,0 +1,3 @@
+interface Exj {
+  string reverse(in string s);
+};
