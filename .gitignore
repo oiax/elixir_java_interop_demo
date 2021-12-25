@@ -24,3 +24,9 @@ exj_demo-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+.classpath
+java/jinterface-1.6.1.jar
+/otp/
+
+*.class
