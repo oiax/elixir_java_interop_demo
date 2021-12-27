@@ -18,7 +18,22 @@ $ docker-compose exec app bash
 > ./start.sh
 ```
 
-## Usage
+Here is the source code of this shell script:
+
+```bash
+#!/bin/bash
+set -eu
+
+epmd -daemon
+
+CLASSPATH=".:/work/otp/lib/jinterface/java_src"
+cd java
+java -classpath "$CLASSPATH" SimpleServer
+```
+
+Note that this starts the [epmd](https://www.erlang.org/doc/man/epmd.html) (Erlang Port Mapper Daemon) beforehand.
+
+## Elixir client
 
 ```elixir
 {:ok, host} = :inet.gethostname()
@@ -49,5 +64,59 @@ This script is available as [client.exs](./lib/client.exs).
 You can run it like this:
 
 ```
-$ elixir --sname client lib/client.exs
+$ docker-compose exec app bash
+> elixir --sname client lib/client.exs
 ```
+
+## Java server
+
+Here is the source code of a simple server written in Java.
+
+```java
+import com.ericsson.otp.erlang.OtpAuthException;
+import com.ericsson.otp.erlang.OtpNode;
+import com.ericsson.otp.erlang.OtpMbox;
+import com.ericsson.otp.erlang.OtpErlangObject;
+import com.ericsson.otp.erlang.OtpErlangTuple;
+import com.ericsson.otp.erlang.OtpErlangPid;
+import com.ericsson.otp.erlang.OtpErlangBinary;
+import com.ericsson.otp.erlang.OtpErlangInt;
+
+public class SimpleServer {
+  static java.lang.String snode = "simpleserver";
+  static java.lang.String mboxname = "mbox";
+  static java.lang.String cookie = "elixirjava";
+  private OtpNode node;
+  private OtpMbox mbox;
+
+  public static void main(String[] args) throws Exception {
+    SimpleServer server = new SimpleServer(args);
+    server.process();
+  }
+
+  public SimpleServer(String[] args) throws java.io.IOException {
+    node = new OtpNode(snode, cookie);
+    mbox = node.createMbox(mboxname);
+    System.err.println("Server started.");
+  }
+
+  private void process() throws OtpAuthException {
+    while (true) {
+      try {
+        OtpErlangObject msg = mbox.receive();
+        OtpErlangTuple t1 = (OtpErlangTuple) msg;
+        OtpErlangPid from = (OtpErlangPid) t1.elementAt(0);
+        OtpErlangBinary bin = (OtpErlangBinary) t1.elementAt(1);
+
+        OtpErlangInt reply = new OtpErlangInt(bin.size());
+        mbox.send(from, reply);
+      }
+      catch (Exception e) {
+        System.err.println("Error accepting connection: " + e);
+      }
+    }
+  }
+}
+```
+
+This source code is available as [SimpleServer.java](./java/SimpleServer.java).
